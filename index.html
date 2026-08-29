@@ -324,7 +324,11 @@ const REMOTE_PATH = "marche507/data";
 let dbListenerAttached = false;
 
 function doLogin(){
-  if(!auth) return;
+  if(!auth){
+    var e0 = document.getElementById('authError');
+    if(e0) e0.textContent = "Service de connexion indisponible (Firebase non chargé). Vérifiez votre connexion Internet, puis rechargez la page.";
+    return;
+  }
   const email = document.getElementById('authEmail').value.trim();
   const password = document.getElementById('authPassword').value;
   const errorEl = document.getElementById('authError');
@@ -342,7 +346,12 @@ function doLogin(){
 }
 
 function doLogout(){
-  if(auth && confirm('Se déconnecter ?')) auth.signOut();
+  if(auth && confirm('Se déconnecter ?')){
+    auth.signOut().catch(function(err){
+      console.error('Échec de la déconnexion :', err);
+      alert("La déconnexion a échoué : " + (err && err.message ? err.message : err));
+    });
+  }
 }
 
 if(auth){
@@ -359,6 +368,19 @@ if(auth){
       userBadge.style.display = 'none';
     }
   });
+} else {
+  // Firebase indisponible : sans ce repli, l'écran de connexion reste affiché
+  // indéfiniment et verrouille l'application alors que les données locales
+  // sont déjà chargées derrière lui.
+  document.addEventListener('DOMContentLoaded', function(){
+    var scr = document.getElementById('authScreen');
+    if(scr) scr.style.display = 'none';
+    var st = document.getElementById('saveStatus');
+    if(st){
+      st.textContent = "⚠ Hors-ligne — données locales, aucune synchronisation";
+      st.style.display = 'inline';
+    }
+  });
 }
 
 function attachRemoteSync(){
@@ -370,8 +392,17 @@ function attachRemoteSync(){
       const modalOpen = document.getElementById('modalOverlay').classList.contains('open')
         || document.getElementById('qtyModalOverlay').classList.contains('open');
       if(!modalOpen){
-        migrateAndApply(remote);
-        renderAll();
+        try {
+          migrateAndApply(remote);
+          renderAll();
+        } catch(err){
+          console.error('⚠ Données distantes inexploitables :', err);
+          var st = document.getElementById('saveStatus');
+          if(st){
+            st.textContent = "⚠ Données distantes inexploitables";
+            st.style.display = 'inline';
+          }
+        }
       }
     }
   }, function(error){
@@ -442,7 +473,7 @@ const DATA = {
   ]
 };
 
-function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function esc(s){ return String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
 function avg(arr){ return arr && arr.length ? arr.reduce((s,x)=>s+(x.pct||0),0)/arr.length : 0; }
 
 function wavg(arr){
@@ -469,7 +500,7 @@ function updateSyntheseText(kpiBat, kpiArt, kpiCam, tot){
   const el = document.getElementById("syntheseText");
   if(!el) return;
 
-  const bldgSummary = DATA.buildings.map(b => `${b.name} (${Math.round(avg(b.genie))}%)`).join(", ");
+  const bldgSummary = DATA.buildings.map(b => `${esc(b.name)} (${Math.round(avg(b.genie))}%)`).join(", ");
   
   el.innerHTML = `
     <b>Avancement global estimé : ${Math.round(tot)}%</b><br>
@@ -1176,7 +1207,7 @@ async function exportPPTX() {
    ============================================================ */
 async function exportPDF() {
   const btn = document.getElementById("pdfBtn");
-  btn.disabled = true;
+  if(btn) btn.disabled = true;
   btn.textContent = "Génération PDF...";
 
   document.querySelector(".topbar").style.display = "none";
