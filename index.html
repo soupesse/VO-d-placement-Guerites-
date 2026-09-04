@@ -106,7 +106,7 @@
   /* Modales */
   .modal-overlay{ position:fixed; inset:0; background:rgba(20,26,33,0.5); display:none; align-items:center; justify-content:center; z-index:1000; padding:24px; }
   .modal-overlay.open{ display:flex; }
-  .modal{ background:var(--panel); border-radius:8px; width:100%; max-width:680px; max-height:85vh; display:flex; flex-direction:column; box-shadow:0 10px 25px rgba(0,0,0,0.15); overflow:hidden; }
+  .modal{ background:var(--panel); border-radius:8px; width:100%; max-width:720px; max-height:85vh; display:flex; flex-direction:column; box-shadow:0 10px 25px rgba(0,0,0,0.15); overflow:hidden; }
   .modal-head{ padding:16px 20px; border-bottom:1px solid var(--grid); display:flex; justify-content:space-between; align-items:center; }
   .modal-body{ padding:16px 20px; overflow-y:auto; flex:1; }
   .modal-foot{ padding:14px 20px; border-top:1px solid var(--grid); display:flex; justify-content:flex-end; gap:10px; }
@@ -235,22 +235,18 @@
 
   <section id="section2">
     <div class="sectionhead">
-      <h2><span class="num">2.</span> Artères de câbles</h2>
+      <h2><span class="num">2.</span> Artères de câbles (GL 92 & GL 93)</h2>
       <button class="edit-btn" onclick="openModal('arteres')">✏️ Modifier</button>
     </div>
-    <div class="building-block">
-      <div class="bars" id="arteres-bars"></div>
-    </div>
+    <div class="dynamic-grid" id="arteres-container"></div>
   </section>
 
   <section id="section3">
     <div class="sectionhead">
-      <h2><span class="num">3.</span> Campagne : Pose des boîtes de connexion</h2>
+      <h2><span class="num">3.</span> Campagne : Pose des boîtes de connexion (GL 92 & GL 93)</h2>
       <button class="edit-btn" onclick="openModal('campagne')">✏️ Modifier</button>
     </div>
-    <div class="building-block">
-      <div class="bars" id="campagne-bars"></div>
-    </div>
+    <div class="dynamic-grid" id="campagne-container"></div>
   </section>
 
   <footer id="pdfFooter">Rapport d'avancement des travaux — Marché 507 — Bâtiments, Artères et Boîtes de Connexion</footer>
@@ -369,9 +365,6 @@ if(auth){
     }
   });
 } else {
-  // Firebase indisponible : sans ce repli, l'écran de connexion reste affiché
-  // indéfiniment et verrouille l'application alors que les données locales
-  // sont déjà chargées derrière lui.
   document.addEventListener('DOMContentLoaded', function(){
     var scr = document.getElementById('authScreen');
     if(scr) scr.style.display = 'none';
@@ -413,11 +406,35 @@ function attachRemoteSync(){
   });
 }
 
+function isGroupedBySite(arr) {
+  return Array.isArray(arr) && arr.length > 0 && Array.isArray(arr[0].tasks);
+}
+
+function cleanSiteName(name){
+  if(!name) return "";
+  return String(name).replace(/^Gare\s+/i, '').replace(/GL(\d+)/i, 'GL $1').trim();
+}
+
 function migrateAndApply(source){
   if(!source) return;
-  if(source.buildings && Array.isArray(source.buildings)) DATA.buildings = source.buildings;
-  if(source.arteres && Array.isArray(source.arteres)) DATA.arteres = source.arteres;
-  if(source.campagne && Array.isArray(source.campagne)) DATA.campagne = source.campagne;
+  if(source.buildings && Array.isArray(source.buildings)) {
+    DATA.buildings = source.buildings.map(b => ({
+      ...b,
+      name: cleanSiteName(b.name)
+    }));
+  }
+  if(source.arteres && isGroupedBySite(source.arteres)) {
+    DATA.arteres = source.arteres.map(s => ({
+      ...s,
+      name: cleanSiteName(s.name)
+    }));
+  }
+  if(source.campagne && isGroupedBySite(source.campagne)) {
+    DATA.campagne = source.campagne.map(s => ({
+      ...s,
+      name: cleanSiteName(s.name)
+    }));
+  }
 }
 
 const DEFAULT_GENIE_TASKS = [
@@ -446,30 +463,68 @@ function generateBuildingGenie(pct) {
 const DATA = {
   buildings: [
     { id: "gs33", name: "Gs33", genie: generateBuildingGenie(100) },
-    { id: "gl100", name: "GL100", genie: generateBuildingGenie(100) },
-    { id: "gl103", name: "GL103", genie: generateBuildingGenie(100) },
-    { id: "gs106", name: "GS106", genie: generateBuildingGenie(65) },
-    { id: "gl112", name: "GL112", genie: generateBuildingGenie(100) },
-    { id: "gl92", name: "GL92", genie: generateBuildingGenie(5) },
-    { id: "g93", name: "G93", genie: generateBuildingGenie(5) }
+    { id: "gl100", name: "GL 100", genie: generateBuildingGenie(100) },
+    { id: "gl103", name: "GL 103", genie: generateBuildingGenie(100) },
+    { id: "gs106", name: "GS 106", genie: generateBuildingGenie(65) },
+    { id: "gl112", name: "GL 112", genie: generateBuildingGenie(100) },
+    { id: "gl92", name: "GL 92", genie: generateBuildingGenie(5) },
+    { id: "gl93", name: "GL 93", genie: generateBuildingGenie(5) }
   ],
   arteres: [
-    { name:"Piquetage des artères", pct:95, qty:1000, done:950, unit:"ml" },
-    { name:"Confection et fouille des tranchées", pct:80, qty:1000, done:800, unit:"ml" },
-    { name:"Pose des fourreaux et buses", pct:75, qty:1000, done:750, unit:"ml" },
-    { name:"Remblaiement et fermeture des tranchées", pct:60, qty:1000, done:600, unit:"ml" },
-    { name:"Déroulage de câbles CDTE", pct:40, qty:1000, done:400, unit:"ml" },
-    { name:"Déroulage de câbles Signalisation (SIG)", pct:40, qty:1000, done:400, unit:"ml" },
-    { name:"Déroulage de câbles Énergie", pct:35, qty:1000, done:350, unit:"ml" },
-    { name:"Déroulage PHED et Soufflage FO", pct:20, qty:1000, done:200, unit:"ml" },
-    { name:"Traversées sous voies (TSV)", pct:50, qty:10, done:5, unit:"u" }
+    {
+      id: "gl92",
+      name: "GL 92",
+      tasks: [
+        { name:"Piquetage des artères", pct:95, qty:500, done:475, unit:"ml" },
+        { name:"Confection et fouille des tranchées", pct:80, qty:500, done:400, unit:"ml" },
+        { name:"Pose des fourreaux et buses", pct:75, qty:500, done:375, unit:"ml" },
+        { name:"Remblaiement et fermeture des tranchées", pct:60, qty:500, done:300, unit:"ml" },
+        { name:"Déroulage de câbles CDTE", pct:40, qty:500, done:200, unit:"ml" },
+        { name:"Déroulage de câbles Signalisation (SIG)", pct:40, qty:500, done:200, unit:"ml" },
+        { name:"Déroulage de câbles Énergie", pct:35, qty:500, done:175, unit:"ml" },
+        { name:"Déroulage PHED et Soufflage FO", pct:20, qty:500, done:100, unit:"ml" },
+        { name:"Traversées sous voies (TSV)", pct:50, qty:5, done:2.5, unit:"u" }
+      ]
+    },
+    {
+      id: "gl93",
+      name: "GL 93",
+      tasks: [
+        { name:"Piquetage des artères", pct:95, qty:500, done:475, unit:"ml" },
+        { name:"Confection et fouille des tranchées", pct:80, qty:500, done:400, unit:"ml" },
+        { name:"Pose des fourreaux et buses", pct:75, qty:500, done:375, unit:"ml" },
+        { name:"Remblaiement et fermeture des tranchées", pct:60, qty:500, done:300, unit:"ml" },
+        { name:"Déroulage de câbles CDTE", pct:40, qty:500, done:200, unit:"ml" },
+        { name:"Déroulage de câbles Signalisation (SIG)", pct:40, qty:500, done:200, unit:"ml" },
+        { name:"Déroulage de câbles Énergie", pct:35, qty:500, done:175, unit:"ml" },
+        { name:"Déroulage PHED et Soufflage FO", pct:20, qty:500, done:100, unit:"ml" },
+        { name:"Traversées sous voies (TSV)", pct:50, qty:5, done:2.5, unit:"u" }
+      ]
+    }
   ],
   campagne: [
-    { name:"Implantation et piquetage des boîtes de connexion", pct:70, qty:120, done:84, unit:"u" },
-    { name:"Pose et scellement des boîtes de raccordement / connexion", pct:45, qty:120, done:54, unit:"u" },
-    { name:"Épanouissement et raccordement intérieur des câbles", pct:30, qty:120, done:36, unit:"u" },
-    { name:"Repérage, étiquetage et repérage filerie", pct:20, qty:120, done:24, unit:"u" },
-    { name:"Tests de continuité et isolement en boîte", pct:10, qty:120, done:12, unit:"u" }
+    {
+      id: "gl92",
+      name: "GL 92",
+      tasks: [
+        { name:"Implantation et piquetage des boîtes de connexion", pct:70, qty:60, done:42, unit:"u" },
+        { name:"Pose et scellement des boîtes de connexion", pct:45, qty:60, done:27, unit:"u" },
+        { name:"Épanouissement et raccordement intérieur", pct:30, qty:60, done:18, unit:"u" },
+        { name:"Repérage, étiquetage et repérage filerie", pct:20, qty:60, done:12, unit:"u" },
+        { name:"Tests de continuité et isolement en boîte", pct:10, qty:60, done:6, unit:"u" }
+      ]
+    },
+    {
+      id: "gl93",
+      name: "GL 93",
+      tasks: [
+        { name:"Implantation et piquetage des boîtes de connexion", pct:70, qty:60, done:42, unit:"u" },
+        { name:"Pose et scellement des boîtes de connexion", pct:45, qty:60, done:27, unit:"u" },
+        { name:"Épanouissement et raccordement intérieur", pct:30, qty:60, done:18, unit:"u" },
+        { name:"Repérage, étiquetage et repérage filerie", pct:20, qty:60, done:12, unit:"u" },
+        { name:"Tests de continuité et isolement en boîte", pct:10, qty:60, done:6, unit:"u" }
+      ]
+    }
   ]
 };
 
@@ -481,6 +536,11 @@ function wavg(arr){
   const totalQty = arr.reduce((s,x)=> s + (parseFloat(x.qty) || 0), 0);
   if(totalQty <= 0) return avg(arr);
   return arr.reduce((s,x)=> s + (x.pct||0) * (parseFloat(x.qty) || 0), 0) / totalQty;
+}
+
+function getFlattenedTasks(arrKey) {
+  if(!DATA[arrKey] || !Array.isArray(DATA[arrKey])) return [];
+  return DATA[arrKey].reduce((acc, site) => acc.concat(site.tasks || []), []);
 }
 
 function renderBarRows(tasks){
@@ -496,6 +556,18 @@ function renderBarRows(tasks){
   }).join("");
 }
 
+function renderSiteCards(list) {
+  return (list || []).map(item => `
+    <div class="building-block">
+      <div class="building-title">
+        <span>${esc(item.name)}</span>
+        <span style="font-size:0.82rem; font-weight:800; color:var(--accent-orange);">${Math.round(wavg(item.tasks))}%</span>
+      </div>
+      <div class="bars">${renderBarRows(item.tasks)}</div>
+    </div>
+  `).join("");
+}
+
 function updateSyntheseText(kpiBat, kpiArt, kpiCam, tot){
   const el = document.getElementById("syntheseText");
   if(!el) return;
@@ -504,9 +576,9 @@ function updateSyntheseText(kpiBat, kpiArt, kpiCam, tot){
   
   el.innerHTML = `
     <b>Avancement global estimé : ${Math.round(tot)}%</b><br>
-    • <b>Génie Civil Bâtiments (${Math.round(kpiBat)}%) :</b> Suivi sur ${DATA.buildings.length} bâtiments [${bldgSummary}]. Les guérites Gs33, GL100, GL103 et GL112 sont achevées, GS106 est en cours, tandis que GL92 et G93 sont en phase d'implantation.<br>
-    • <b>Artères de câbles (${Math.round(kpiArt)}%) :</b> Tranchées, pose des buses, tirage des câbles CDTE, SIG, Énergie et FO.<br>
-    • <b>Campagne / Boîtes de connexion (${Math.round(kpiCam)}%) :</b> Implantation, pose, épanouissement des câbles et raccordement.
+    • <b>Génie Civil Bâtiments (${Math.round(kpiBat)}%) :</b> Suivi sur ${DATA.buildings.length} bâtiments [${bldgSummary}]. Les guérites Gs33, GL 100, GL 103 et GL 112 sont achevées, GS 106 est en cours, tandis que GL 92 et GL 93 sont en phase de démarrage.<br>
+    • <b>Artères de câbles (${Math.round(kpiArt)}%) :</b> Suivi spécifique pour <b>GL 92</b> et <b>GL 93</b> : tranchées, pose des buses, tirage des câbles CDTE, SIG, Énergie et FO.<br>
+    • <b>Campagne / Boîtes de connexion (${Math.round(kpiCam)}%) :</b> Suivi spécifique pour <b>GL 92</b> et <b>GL 93</b> : implantation, pose, épanouissement des câbles et raccordement.
   `;
 }
 
@@ -524,32 +596,40 @@ function renderAll(){
     `).join("");
   }
 
-  const artEl = document.getElementById("arteres-bars"); 
-  if(artEl) artEl.innerHTML = renderBarRows(DATA.arteres);
+  const artEl = document.getElementById("arteres-container"); 
+  if(artEl) artEl.innerHTML = renderSiteCards(DATA.arteres);
 
-  const camEl = document.getElementById("campagne-bars"); 
-  if(camEl) camEl.innerHTML = renderBarRows(DATA.campagne);
+  const camEl = document.getElementById("campagne-container"); 
+  if(camEl) camEl.innerHTML = renderSiteCards(DATA.campagne);
 
   recalcKPIs();
 }
 
 function recalcKPIs(){
   const kpiBat = DATA.buildings.length ? DATA.buildings.reduce((acc, b) => acc + avg(b.genie), 0) / DATA.buildings.length : 0;
-  const kpiArt = wavg(DATA.arteres);
-  const kpiCam = wavg(DATA.campagne);
+  const kpiArt = wavg(getFlattenedTasks('arteres'));
+  const kpiCam = wavg(getFlattenedTasks('campagne'));
 
-  document.querySelector('[data-kpi="batiments"] .kpi-pct').textContent = Math.round(kpiBat);
-  document.querySelector('[data-kpi="batiments"] .pfill').style.width = kpiBat + "%";
+  const kpiBatEl = document.querySelector('[data-kpi="batiments"] .kpi-pct');
+  if(kpiBatEl) kpiBatEl.textContent = Math.round(kpiBat);
+  const kpiBatFill = document.querySelector('[data-kpi="batiments"] .pfill');
+  if(kpiBatFill) kpiBatFill.style.width = kpiBat + "%";
 
-  document.querySelector('[data-kpi="arteres"] .kpi-pct').textContent = Math.round(kpiArt);
-  document.querySelector('[data-kpi="arteres"] .pfill').style.width = kpiArt + "%";
+  const kpiArtEl = document.querySelector('[data-kpi="arteres"] .kpi-pct');
+  if(kpiArtEl) kpiArtEl.textContent = Math.round(kpiArt);
+  const kpiArtFill = document.querySelector('[data-kpi="arteres"] .pfill');
+  if(kpiArtFill) kpiArtFill.style.width = kpiArt + "%";
 
-  document.querySelector('[data-kpi="campagne"] .kpi-pct').textContent = Math.round(kpiCam);
-  document.querySelector('[data-kpi="campagne"] .pfill').style.width = kpiCam + "%";
+  const kpiCamEl = document.querySelector('[data-kpi="campagne"] .kpi-pct');
+  if(kpiCamEl) kpiCamEl.textContent = Math.round(kpiCam);
+  const kpiCamFill = document.querySelector('[data-kpi="campagne"] .pfill');
+  if(kpiCamFill) kpiCamFill.style.width = kpiCam + "%";
 
   const tot = (kpiBat + kpiArt + kpiCam) / 3;
-  document.getElementById("globalPctNum").textContent = Math.round(tot) + "%";
-  document.getElementById("ringFill").style.strokeDashoffset = 301.6 * (1 - tot/100);
+  const globalEl = document.getElementById("globalPctNum");
+  if(globalEl) globalEl.textContent = Math.round(tot) + "%";
+  const ringFill = document.getElementById("ringFill");
+  if(ringFill) ringFill.style.strokeDashoffset = 301.6 * (1 - tot/100);
 
   updateSyntheseText(kpiBat, kpiArt, kpiCam, tot);
 }
@@ -561,8 +641,11 @@ function openModal(key){
   let html = "";
   
   if(QTY_TRACKED_KEYS.includes(key)){
-    html += `<div class="qty-note">Saisissez la <b>quantité réalisée</b>. Le % est calculé automatiquement (Réalisé ÷ Total).</div>`;
-    html += DATA[key].map((r,i)=> fieldRow(key, i, r)).join("");
+    html += `<div class="qty-note">Saisissez la <b>quantité réalisée</b> pour chaque site. Le pourcentage d'avancement se calcule automatiquement (Réalisé ÷ Total).</div>`;
+    DATA[key].forEach((site, sIdx) => {
+      html += `<div class="modal-section-label">📍 ${esc(site.name)} — Avancement : ${Math.round(wavg(site.tasks))}%</div>`;
+      html += site.tasks.map((r, i) => fieldRow(key, sIdx, i, r)).join("");
+    });
   } else if(key === 'batiments'){
     DATA.buildings.forEach((b, bIdx) => {
       html += `<div class="modal-section-label">🏢 ${esc(b.name)} (Génie Civil) — Actuel : ${Math.round(avg(b.genie))}%</div>`;
@@ -583,12 +666,12 @@ function fieldRowBuilding(bIdx, type, i, item){
     </div>`;
 }
 
-function fieldRow(arr, i, item){
+function fieldRow(arr, sIdx, i, item){
   const total = parseFloat(item.qty) || 0;
   const done = item.done ?? 0;
   const pct = total > 0 ? Math.min(100, Math.max(0, (done/total)*100)) : 0;
   return `
-    <div class="field-row qty-tracked" data-arr="${arr}" data-i="${i}" data-total="${total}">
+    <div class="field-row qty-tracked" data-arr="${arr}" data-sidx="${sIdx}" data-i="${i}" data-total="${total}">
       <span style="font-size:0.8rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="Total : ${total} ${esc(item.unit||'u')}">${esc(item.name)}</span>
       <div class="done-wrap">
         <input type="number" class="done-i" min="0" step="any" value="${done}" oninput="updateComputedPct(this)">
@@ -617,11 +700,12 @@ function saveModal(){
       DATA.buildings[bIdx][type][i].pct = Math.max(0, Math.min(100, parseInt(row.querySelector('.num-i').value) || 0));
     } else {
       const arr = row.dataset.arr; 
+      const sIdx = parseInt(row.dataset.sidx);
       const i = parseInt(row.dataset.i);
       const total = parseFloat(row.dataset.total) || 0;
       const done = Math.max(0, parseFloat(row.querySelector('.done-i').value) || 0);
-      DATA[arr][i].done = done;
-      DATA[arr][i].pct = total > 0 ? Math.round(Math.min(100, (done/total)*100)) : 0;
+      DATA[arr][sIdx].tasks[i].done = done;
+      DATA[arr][sIdx].tasks[i].pct = total > 0 ? Math.round(Math.min(100, (done/total)*100)) : 0;
     }
   });
   renderAll(); 
@@ -670,10 +754,17 @@ function renderQtyModalBody(){
     </div>
   `;
 
-  html += `<div class="modal-section-label" style="font-size:0.9rem; color:var(--accent);">⚖️ Quantités Totales Prévues (Pondération)</div>`;
+  html += `<div class="modal-section-label" style="font-size:0.9rem; color:var(--accent);">⚖️ Quantités Prévues (GL 92 & GL 93)</div>`;
   html += '<div class="qty-row qty-row-head"><span>Désignation</span><span>Qté totale</span><span>Unité</span></div>';
-  html += '<div class="modal-section-label">2. Artères de câbles</div>' + DATA.arteres.map((r,i)=> qtyFieldRow("arteres", i, r)).join("");
-  html += '<div class="modal-section-label">3. Boîtes de connexion (Campagne)</div>' + DATA.campagne.map((r,i)=> qtyFieldRow("campagne", i, r)).join("");
+
+  ['arteres', 'campagne'].forEach(key => {
+    const title = key === 'arteres' ? "2. Artères de câbles" : "3. Boîtes de connexion (Campagne)";
+    html += `<div class="modal-section-label" style="color:var(--accent);">${title}</div>`;
+    DATA[key].forEach((site, sIdx) => {
+      html += `<div style="font-weight:700; font-size:0.8rem; color:#2b6cb0; margin:6px 0 4px;">📍 ${esc(site.name)}</div>`;
+      html += site.tasks.map((r, i) => qtyFieldRow(key, sIdx, i, r)).join("");
+    });
+  });
 
   body.innerHTML = html;
 }
@@ -720,9 +811,9 @@ function deleteTask(bIdx, tIdx){
   renderQtyModalBody();
 }
 
-function qtyFieldRow(arr, i, item){
+function qtyFieldRow(arr, sIdx, i, item){
   return `
-    <div class="qty-row" data-arr="${arr}" data-i="${i}">
+    <div class="qty-row" data-arr="${arr}" data-sidx="${sIdx}" data-i="${i}">
       <span style="font-size:0.82rem;">${esc(item.name)}</span>
       <input type="number" class="qty-i" min="0" step="any" value="${item.qty ?? 0}">
       <input type="text" class="unit-i" maxlength="8" value="${esc(item.unit || 'u')}">
@@ -734,20 +825,21 @@ function closeQtyModal(){ document.getElementById("qtyModalOverlay").classList.r
 function saveQtyModal(){
   document.getElementById("qtyModalBody").querySelectorAll(".qty-row[data-arr]").forEach(row=>{
     const arr = row.dataset.arr; 
+    const sIdx = parseInt(row.dataset.sidx);
     const i = parseInt(row.dataset.i);
     const q = parseFloat(row.querySelector('.qty-i').value);
-    DATA[arr][i].qty = (isNaN(q) || q < 0) ? 0 : q;
-    DATA[arr][i].unit = row.querySelector('.unit-i').value.trim() || 'u';
-    const total = DATA[arr][i].qty;
-    const done = DATA[arr][i].done || 0;
-    DATA[arr][i].pct = total > 0 ? Math.round(Math.min(100, (done/total)*100)) : 0;
+    DATA[arr][sIdx].tasks[i].qty = (isNaN(q) || q < 0) ? 0 : q;
+    DATA[arr][sIdx].tasks[i].unit = row.querySelector('.unit-i').value.trim() || 'u';
+    const total = DATA[arr][sIdx].tasks[i].qty;
+    const done = DATA[arr][sIdx].tasks[i].done || 0;
+    DATA[arr][sIdx].tasks[i].pct = total > 0 ? Math.round(Math.min(100, (done/total)*100)) : 0;
   });
   renderAll(); 
   closeQtyModal();
   persistData();
 }
 
-const STORAGE_KEY = "suivi_m507_data_v1";
+const STORAGE_KEY = "suivi_m507_data_v2";
 
 function persistData(){
   try {
@@ -797,8 +889,10 @@ async function exportExcel() {
     workbook.created = new Date();
 
     const kpiBat = DATA.buildings.length ? DATA.buildings.reduce((acc, b) => acc + avg(b.genie), 0) / DATA.buildings.length : 0;
-    const kpiArt = wavg(DATA.arteres);
-    const kpiCam = wavg(DATA.campagne);
+    const flatArt = getFlattenedTasks('arteres');
+    const flatCam = getFlattenedTasks('campagne');
+    const kpiArt = wavg(flatArt);
+    const kpiCam = wavg(flatCam);
     const totGlobal = (kpiBat + kpiArt + kpiCam) / 3;
 
     const ws1 = workbook.addWorksheet('📊 Synthèse & Dashboard', { views: [{ showGridLines: true }] });
@@ -824,7 +918,7 @@ async function exportExcel() {
 
     ws1.mergeCells('B3:F3');
     const subCell = ws1.getCell('B3');
-    subCell.value = `Génie Civil, Artères & Boîtes de Connexion | Exporté le : ${new Date().toLocaleString('fr-FR')}`;
+    subCell.value = `Génie Civil, Artères & Boîtes (GL92/GL93) | Exporté le : ${new Date().toLocaleString('fr-FR')}`;
     subCell.font = { name: 'Segoe UI', size: 9, italic: true, color: { argb: 'FF718096' } };
 
     ws1.mergeCells('B5:B6');
@@ -844,8 +938,8 @@ async function exportExcel() {
 
     const kpis = [
       { col: 'C', label: '1. BÂTIMENTS GC', val: kpiBat },
-      { col: 'D', label: '2. ARTÈRES ⚖️', val: kpiArt },
-      { col: 'E', label: '3. BOÎTES CONNEXION ⚖️', val: kpiCam }
+      { col: 'D', label: '2. ARTÈRES (GL92/93) ⚖️', val: kpiArt },
+      { col: 'E', label: '3. BOÎTES (GL92/93) ⚖️', val: kpiCam }
     ];
 
     kpis.forEach(k => {
@@ -882,16 +976,16 @@ async function exportExcel() {
       cell.border = thinBorder;
     });
 
-    const totalArt = DATA.arteres.reduce((s,x)=> s + (parseFloat(x.qty)||0), 0);
-    const doneArt = DATA.arteres.reduce((s,x)=> s + (parseFloat(x.done)||0), 0);
-    const totalCam = DATA.campagne.reduce((s,x)=> s + (parseFloat(x.qty)||0), 0);
-    const doneCam = DATA.campagne.reduce((s,x)=> s + (parseFloat(x.done)||0), 0);
+    const totalArt = flatArt.reduce((s,x)=> s + (parseFloat(x.qty)||0), 0);
+    const doneArt = flatArt.reduce((s,x)=> s + (parseFloat(x.done)||0), 0);
+    const totalCam = flatCam.reduce((s,x)=> s + (parseFloat(x.qty)||0), 0);
+    const doneCam = flatCam.reduce((s,x)=> s + (parseFloat(x.done)||0), 0);
     const bldgNames = DATA.buildings.map(b => b.name).join(', ');
 
     const rows = [
       { axe: "1. Bâtiments (Génie Civil)", perim: `${DATA.buildings.length} bâtiments (${bldgNames})`, qTot: "-", qReal: "-", pct: Math.round(kpiBat)/100 },
-      { axe: "2. Artères de câbles", perim: "Tranchées, fourreaux, câblage CDTE/SIG/Énergie/FO", qTot: `${totalArt} ml`, qReal: `${doneArt} ml`, pct: Math.round(kpiArt)/100 },
-      { axe: "3. Boîtes de Connexion (Campagne)", perim: "Implantation, pose, raccordement et tests", qTot: `${totalCam} u`, qReal: `${doneCam} u`, pct: Math.round(kpiCam)/100 }
+      { axe: "2. Artères de câbles", perim: "GL 92 et GL 93 — Tranchées, fourreaux, tirage câbles & FO", qTot: `${totalArt} ml`, qReal: `${doneArt} ml`, pct: Math.round(kpiArt)/100 },
+      { axe: "3. Boîtes de Connexion (Campagne)", perim: "GL 92 et GL 93 — Implantation, pose, raccordement", qTot: `${totalCam} u`, qReal: `${doneCam} u`, pct: Math.round(kpiCam)/100 }
     ];
 
     rows.forEach((r, idx) => {
@@ -946,37 +1040,41 @@ async function exportExcel() {
     });
 
     currR += 2;
-    addDetailHeader("2. ARTÈRES DE CÂBLES");
-    DATA.arteres.forEach(t => {
-      ws2.getCell(`A${currR}`).value = "Artères";
-      ws2.getCell(`B${currR}`).value = t.name;
-      ws2.getCell(`C${currR}`).value = parseFloat(t.qty) || 0;
-      ws2.getCell(`D${currR}`).value = t.unit || 'ml';
-      ws2.getCell(`E${currR}`).value = parseFloat(t.done) || 0;
-      const pCell = ws2.getCell(`F${currR}`);
-      pCell.value = (t.pct || 0) / 100;
-      pCell.numberFormat = '0.0%';
-      pCell.alignment = { horizontal: 'right' };
-      pCell.font = { bold: true };
-      ['A','B','C','D','E','F'].forEach(cl => ws2.getCell(`${cl}${currR}`).border = thinBorder);
-      currR++;
+    addDetailHeader("2. ARTÈRES DE CÂBLES (GL92 & GL93)");
+    DATA.arteres.forEach(site => {
+      (site.tasks || []).forEach(t => {
+        ws2.getCell(`A${currR}`).value = "Artères - " + site.name;
+        ws2.getCell(`B${currR}`).value = t.name;
+        ws2.getCell(`C${currR}`).value = parseFloat(t.qty) || 0;
+        ws2.getCell(`D${currR}`).value = t.unit || 'ml';
+        ws2.getCell(`E${currR}`).value = parseFloat(t.done) || 0;
+        const pCell = ws2.getCell(`F${currR}`);
+        pCell.value = (t.pct || 0) / 100;
+        pCell.numberFormat = '0.0%';
+        pCell.alignment = { horizontal: 'right' };
+        pCell.font = { bold: true };
+        ['A','B','C','D','E','F'].forEach(cl => ws2.getCell(`${cl}${currR}`).border = thinBorder);
+        currR++;
+      });
     });
 
     currR += 2;
-    addDetailHeader("3. CAMPAGNE : POSE DES BOÎTES DE CONNEXION");
-    DATA.campagne.forEach(t => {
-      ws2.getCell(`A${currR}`).value = "Campagne";
-      ws2.getCell(`B${currR}`).value = t.name;
-      ws2.getCell(`C${currR}`).value = parseFloat(t.qty) || 0;
-      ws2.getCell(`D${currR}`).value = t.unit || 'u';
-      ws2.getCell(`E${currR}`).value = parseFloat(t.done) || 0;
-      const pCell = ws2.getCell(`F${currR}`);
-      pCell.value = (t.pct || 0) / 100;
-      pCell.numberFormat = '0.0%';
-      pCell.alignment = { horizontal: 'right' };
-      pCell.font = { bold: true };
-      ['A','B','C','D','E','F'].forEach(cl => ws2.getCell(`${cl}${currR}`).border = thinBorder);
-      currR++;
+    addDetailHeader("3. CAMPAGNE : POSE DES BOÎTES DE CONNEXION (GL92 & GL93)");
+    DATA.campagne.forEach(site => {
+      (site.tasks || []).forEach(t => {
+        ws2.getCell(`A${currR}`).value = "Campagne - " + site.name;
+        ws2.getCell(`B${currR}`).value = t.name;
+        ws2.getCell(`C${currR}`).value = parseFloat(t.qty) || 0;
+        ws2.getCell(`D${currR}`).value = t.unit || 'u';
+        ws2.getCell(`E${currR}`).value = parseFloat(t.done) || 0;
+        const pCell = ws2.getCell(`F${currR}`);
+        pCell.value = (t.pct || 0) / 100;
+        pCell.numberFormat = '0.0%';
+        pCell.alignment = { horizontal: 'right' };
+        pCell.font = { bold: true };
+        ['A','B','C','D','E','F'].forEach(cl => ws2.getCell(`${cl}${currR}`).border = thinBorder);
+        currR++;
+      });
     });
 
     const buffer = await workbook.xlsx.writeBuffer();
@@ -1059,13 +1157,15 @@ async function exportPPTX() {
     slide1.addText(document.getElementById("syntheseText").innerText || '', { x: 120 * S, y: 88 * S, w: 630 * S, h: 50 * S, fontFace: font, fontSize: 7.5, color: "2D3748", margin: 0 });
 
     const kpiBat = DATA.buildings.length ? DATA.buildings.reduce((acc, b) => acc + avg(b.genie), 0) / DATA.buildings.length : 0;
-    const kpiArt = wavg(DATA.arteres);
-    const kpiCam = wavg(DATA.campagne);
+    const flatArt = getFlattenedTasks('arteres');
+    const flatCam = getFlattenedTasks('campagne');
+    const kpiArt = wavg(flatArt);
+    const kpiCam = wavg(flatCam);
 
     const kpiItems = [
       { lab: "1. BÂTIMENTS (GÉNIE CIVIL)", val: kpiBat, col: "FF6B35" },
-      { lab: "2. ARTÈRES DE CÂBLES ⚖️", val: kpiArt, col: "2EC4B6" },
-      { lab: "3. BOÎTES DE CONNEXION ⚖️", val: kpiCam, col: "FFD166" }
+      { lab: "2. ARTÈRES (GL92/93) ⚖️", val: kpiArt, col: "2EC4B6" },
+      { lab: "3. BOÎTES (GL92/93) ⚖️", val: kpiCam, col: "FFD166" }
     ];
 
     const kpiW = 236 * S;
@@ -1087,10 +1187,10 @@ async function exportPPTX() {
     slide1.addText("RÉCAPITULATIF DES SECTIONS", { x: 24 * S, y: 224 * S, w: (794 - 48) * S, h: 14 * S, fontFace: font, fontSize: 8.5, bold: true, color: "1A365D", margin: 0 });
     slide1.addShape(getShape('rect'), { x: 24 * S, y: 240 * S, w: (794 - 48) * S, h: 1.5 * S, fill: { color: "E2E8F0" }, line: { color: "E2E8F0", width: 0 } });
 
-    const totalArt = DATA.arteres.reduce((s,x)=> s + (parseFloat(x.qty)||0), 0);
-    const doneArt = DATA.arteres.reduce((s,x)=> s + (parseFloat(x.done)||0), 0);
-    const totalCam = DATA.campagne.reduce((s,x)=> s + (parseFloat(x.qty)||0), 0);
-    const doneCam = DATA.campagne.reduce((s,x)=> s + (parseFloat(x.done)||0), 0);
+    const totalArt = flatArt.reduce((s,x)=> s + (parseFloat(x.qty)||0), 0);
+    const doneArt = flatArt.reduce((s,x)=> s + (parseFloat(x.done)||0), 0);
+    const totalCam = flatCam.reduce((s,x)=> s + (parseFloat(x.qty)||0), 0);
+    const doneCam = flatCam.reduce((s,x)=> s + (parseFloat(x.done)||0), 0);
     const bldgNames = DATA.buildings.map(b => b.name).join(', ');
 
     const tableRows = [
@@ -1099,8 +1199,8 @@ async function exportPPTX() {
         options: { fontFace: font, fontSize: 7.5, bold: true, color: "FFFFFF", fill: "1A365D" }
       })),
       ["1. Bâtiments (Génie Civil)", `7 Bâtiments (${bldgNames})`, "-", "-", `${Math.round(kpiBat)}%`].map(t => ({ text: String(t), options: { fontFace: font, fontSize: 7.5, color: "2D3748", fill: "FFFFFF" } })),
-      ["2. Artères de câbles", "Tranchées, fourreaux, tirage câbles & FO", `${totalArt} ml`, `${doneArt} ml`, `${Math.round(kpiArt)}%`].map(t => ({ text: String(t), options: { fontFace: font, fontSize: 7.5, color: "2D3748", fill: "F4F6F9" } })),
-      ["3. Boîtes de connexion (Campagne)", "Implantation, pose, raccordement et tests", `${totalCam} u`, `${doneCam} u`, `${Math.round(kpiCam)}%`].map(t => ({ text: String(t), options: { fontFace: font, fontSize: 7.5, color: "2D3748", fill: "FFFFFF" } }))
+      ["2. Artères de câbles", "Gares GL92 et GL93", `${totalArt} ml`, `${doneArt} ml`, `${Math.round(kpiArt)}%`].map(t => ({ text: String(t), options: { fontFace: font, fontSize: 7.5, color: "2D3748", fill: "F4F6F9" } })),
+      ["3. Boîtes de connexion", "Gares GL92 et GL93", `${totalCam} u`, `${doneCam} u`, `${Math.round(kpiCam)}%`].map(t => ({ text: String(t), options: { fontFace: font, fontSize: 7.5, color: "2D3748", fill: "FFFFFF" } }))
     ];
 
     slide1.addTable(tableRows, {
@@ -1109,7 +1209,7 @@ async function exportPPTX() {
       align: "left", valign: "middle", border: { pt: 0.5, color: "E2E8F0" }
     });
 
-    // SLIDES BÂTIMENTS (2 PAR SLIDE)
+    // SLIDES BÂTIMENTS
     for (let bIdx = 0; bIdx < DATA.buildings.length; bIdx += 2) {
       const slideB = pptx.addSlide();
       addHeader(slideB, "Section 1 : Bâtiments (Génie Civil)");
@@ -1141,32 +1241,61 @@ async function exportPPTX() {
       });
     }
 
-    // SLIDE 3 : ARTÈRES & CAMPAGNE (BOÎTES DE CONNEXION)
-    const slideInfra = pptx.addSlide();
-    addHeader(slideInfra, "Sections 2 & 3 : Artères & Boîtes de Connexion");
+    // SLIDE ARTÈRES DE CÂBLES (GL 92 & GL 93 CÔTE À CÔTE)
+    const slideArt = pptx.addSlide();
+    addHeader(slideArt, "Section 2 : Artères de Câbles");
 
-    slideInfra.addText([
+    slideArt.addText([
       { text: "2. ", options: { bold: true, color: "FF6B35" } },
-      { text: "ARTÈRES DE CÂBLES", options: { bold: true, color: "1A365D" } }
-    ], { x: 24 * S, y: 66 * S, w: 400 * S, h: 14 * S, fontFace: font, fontSize: 8.5, margin: 0 });
-    slideInfra.addShape(getShape('rect'), { x: 24 * S, y: 82 * S, w: (794 - 48) * S, h: 1.5 * S, fill: { color: "E2E8F0" }, line: { color: "E2E8F0", width: 0 } });
-    
-    slideInfra.addShape(getShape('roundRect'), { x: 24 * S, y: 88 * S, w: (794 - 48) * S, h: 148 * S, rectRadius: 0.05, fill: { color: "FFFFFF" }, line: { color: "E2E8F0", width: 1 } });
-    DATA.arteres.forEach((r, idx) => {
-      const qInfo = `${r.done ?? 0}/${r.qty} ${r.unit||'ml'}`;
-      addProgressRow(slideInfra, r.name, r.pct, 34 * S, (94 + idx * 15) * S, (794 - 68) * S, qInfo, 13);
+      { text: "ARTÈRES DE CÂBLES — GL 92 & GL 93", options: { bold: true, color: "1A365D" } }
+    ], { x: 24 * S, y: 66 * S, w: 500 * S, h: 14 * S, fontFace: font, fontSize: 8.5, margin: 0 });
+    slideArt.addShape(getShape('rect'), { x: 24 * S, y: 82 * S, w: (794 - 48) * S, h: 1.5 * S, fill: { color: "E2E8F0" }, line: { color: "E2E8F0", width: 0 } });
+
+    const colWArt = 363 * S;
+    DATA.arteres.forEach((site, idx) => {
+      const bX = (24 + idx * (363 + 20)) * S;
+      const bY = 90 * S;
+      const cardH = 330 * S;
+
+      slideArt.addShape(getShape('roundRect'), { x: bX, y: bY, w: colWArt, h: cardH, rectRadius: 0.05, fill: { color: "FFFFFF" }, line: { color: "E2E8F0", width: 1 } });
+      slideArt.addText(String(site.name).toUpperCase(), { x: bX + (10 * S), y: bY + (6 * S), w: colWArt - (60 * S), h: 14 * S, fontFace: font, fontSize: 8.5, bold: true, color: "2B6CB0", margin: 0 });
+      slideArt.addText(Math.round(wavg(site.tasks)) + "%", { x: bX + colWArt - (50 * S), y: bY + (6 * S), w: 40 * S, h: 14 * S, fontFace: font, fontSize: 8.5, bold: true, color: "718096", align: "right", margin: 0 });
+      slideArt.addShape(getShape('rect'), { x: bX + (10 * S), y: bY + (22 * S), w: colWArt - (20 * S), h: 1 * S, fill: { color: "E2E8F0" }, line: { color: "E2E8F0", width: 0 } });
+
+      const tasks = site.tasks || [];
+      const taskRowH = Math.min(18, (cardH - 35 * S) / Math.max(tasks.length, 1) / S);
+      tasks.forEach((r, tIdx) => {
+        const qInfo = `${r.done ?? 0}/${r.qty} ${r.unit||'ml'}`;
+        addProgressRow(slideArt, r.name, r.pct, bX + (10 * S), bY + (26 + tIdx * taskRowH) * S, colWArt - (20 * S), qInfo, taskRowH - 1);
+      });
     });
 
-    slideInfra.addText([
-      { text: "3. ", options: { bold: true, color: "FF6B35" } },
-      { text: "CAMPAGNE : POSE DES BOÎTES DE CONNEXION", options: { bold: true, color: "1A365D" } }
-    ], { x: 24 * S, y: 248 * S, w: 500 * S, h: 14 * S, fontFace: font, fontSize: 8.5, margin: 0 });
-    slideInfra.addShape(getShape('rect'), { x: 24 * S, y: 264 * S, w: (794 - 48) * S, h: 1.5 * S, fill: { color: "E2E8F0" }, line: { color: "E2E8F0", width: 0 } });
+    // SLIDE BOÎTES DE CONNEXION (GL 92 & GL 93 CÔTE À CÔTE)
+    const slideCam = pptx.addSlide();
+    addHeader(slideCam, "Section 3 : Boîtes de Connexion");
 
-    slideInfra.addShape(getShape('roundRect'), { x: 24 * S, y: 270 * S, w: (794 - 48) * S, h: 140 * S, rectRadius: 0.05, fill: { color: "FFFFFF" }, line: { color: "E2E8F0", width: 1 } });
-    DATA.campagne.forEach((r, idx) => {
-      const qInfo = `${r.done ?? 0}/${r.qty} ${r.unit||'u'}`;
-      addProgressRow(slideInfra, r.name, r.pct, 34 * S, (276 + idx * 24) * S, (794 - 68) * S, qInfo, 18);
+    slideCam.addText([
+      { text: "3. ", options: { bold: true, color: "FF6B35" } },
+      { text: "CAMPAGNE : BOÎTES DE CONNEXION — GL 92 & GL 93", options: { bold: true, color: "1A365D" } }
+    ], { x: 24 * S, y: 66 * S, w: 600 * S, h: 14 * S, fontFace: font, fontSize: 8.5, margin: 0 });
+    slideCam.addShape(getShape('rect'), { x: 24 * S, y: 82 * S, w: (794 - 48) * S, h: 1.5 * S, fill: { color: "E2E8F0" }, line: { color: "E2E8F0", width: 0 } });
+
+    DATA.campagne.forEach((site, idx) => {
+      const bX = (24 + idx * (363 + 20)) * S;
+      const bY = 90 * S;
+      const cardH = 330 * S;
+
+      slideCam.addShape(getShape('roundRect'), { x: bX, y: bY, w: colWArt, h: cardH, rectRadius: 0.05, fill: { color: "FFFFFF" }, line: { color: "E2E8F0", width: 1 } });
+      slideCam.addText(String(site.name).toUpperCase(), { x: bX + (10 * S), y: bY + (6 * S), w: colWArt - (60 * S), h: 14 * S, fontFace: font, fontSize: 8.5, bold: true, color: "2B6CB0", margin: 0 });
+      slideCam.addText(Math.round(wavg(site.tasks)) + "%", { x: bX + colWArt - (50 * S), y: bY + (6 * S), w: 40 * S, h: 14 * S, fontFace: font, fontSize: 8.5, bold: true, color: "718096", align: "right", margin: 0 });
+      slideCam.addShape(getShape('rect'), { x: bX + (10 * S), y: bY + (22 * S), w: colWArt - (20 * S), h: 1 * S, fill: { color: "E2E8F0" }, line: { color: "E2E8F0", width: 0 } });
+
+      const tasks = site.tasks || [];
+      const taskRowH = Math.min(22, (cardH - 35 * S) / Math.max(tasks.length, 1) / S);
+      tasks.forEach((r, tIdx) => {
+        const qInfo = `${r.done ?? 0}/${r.qty} ${r.unit||'u'}`;
+        addProgressRow(slideCam, r.name, r.pct, bX + (10 * S), bY + (26 + tIdx * taskRowH) * S, colWArt - (20 * S), qInfo, taskRowH - 1);
+      });
     });
 
     // SLIDE 4 : PHOTOS DE CHANTIER
@@ -1181,16 +1310,15 @@ async function exportPPTX() {
 
     const photoBoxes = [
       { x: 24 * S, y: 92 * S, desc: "Génie Civil Bâtiments (Gs33 / GL100 / GS106)", label: "Emplacement Photo 1" },
-      { x: (44 + 363) * S, y: 92 * S, desc: "Confection & Réalisation des Tranchées", label: "Emplacement Photo 2" },
+      { x: (44 + 363) * S, y: 92 * S, desc: "Artères de Câbles (Tranchées GL92 / GL93)", label: "Emplacement Photo 2" },
       { x: 24 * S, y: 240 * S, desc: "Pose et Scellement des Boîtes de Connexion", label: "Emplacement Photo 3" },
       { x: (44 + 363) * S, y: 240 * S, desc: "Raccordement intérieur et repérage filerie", label: "Emplacement Photo 4" }
     ];
 
-    const colW5 = 363 * S;
     photoBoxes.forEach(p => {
-      slidePhoto.addShape(getShape('roundRect'), { x: p.x, y: p.y, w: colW5, h: 125 * S, rectRadius: 0.05, fill: { color: "FFFFFF" }, line: { color: "CBD5E0", width: 1.5, dashType: "dash" } });
-      slidePhoto.addText(p.label, { x: p.x, y: p.y + (48 * S), w: colW5, h: 16 * S, fontFace: font, fontSize: 9, bold: true, color: "A0AEC0", align: "center", margin: 0 });
-      slidePhoto.addText(p.desc, { x: p.x, y: p.y + (128 * S), w: colW5, h: 14 * S, fontFace: font, fontSize: 7.5, italic: true, color: "718096", align: "center", margin: 0 });
+      slidePhoto.addShape(getShape('roundRect'), { x: p.x, y: p.y, w: colWArt, h: 125 * S, rectRadius: 0.05, fill: { color: "FFFFFF" }, line: { color: "CBD5E0", width: 1.5, dashType: "dash" } });
+      slidePhoto.addText(p.label, { x: p.x, y: p.y + (48 * S), w: colWArt, h: 16 * S, fontFace: font, fontSize: 9, bold: true, color: "A0AEC0", align: "center", margin: 0 });
+      slidePhoto.addText(p.desc, { x: p.x, y: p.y + (128 * S), w: colWArt, h: 14 * S, fontFace: font, fontSize: 7.5, italic: true, color: "718096", align: "center", margin: 0 });
     });
 
     await pptx.writeFile({ fileName: "Rapport_Avancement_Marche507.pptx" });
@@ -1229,6 +1357,7 @@ async function exportPDF() {
   headerWrapper.appendChild(document.getElementById("kpiGrid").cloneNode(true));
   units.push(headerWrapper);
 
+  // Section 1 : Bâtiments
   const s1Head = document.querySelector("#section1 .sectionhead").cloneNode(true);
   s1Head.querySelectorAll(".edit-btn").forEach(b => b.remove());
   units.push(s1Head);
@@ -1244,13 +1373,27 @@ async function exportPDF() {
     units.push(rowWrap);
   }
 
-  const sec2 = document.getElementById("section2").cloneNode(true);
-  sec2.querySelectorAll(".edit-btn").forEach(b => b.remove());
-  units.push(sec2);
+  // Section 2 : Artères (GL92 & GL93 côte à côte)
+  const s2Head = document.querySelector("#section2 .sectionhead").cloneNode(true);
+  s2Head.querySelectorAll(".edit-btn").forEach(b => b.remove());
+  units.push(s2Head);
 
-  const sec3 = document.getElementById("section3").cloneNode(true);
-  sec3.querySelectorAll(".edit-btn").forEach(b => b.remove());
-  units.push(sec3);
+  const artBlocks = Array.from(document.querySelectorAll("#arteres-container .building-block"));
+  const artRowWrap = document.createElement("div");
+  artRowWrap.className = "pdf-two-col-row";
+  artBlocks.forEach(b => artRowWrap.appendChild(b.cloneNode(true)));
+  units.push(artRowWrap);
+
+  // Section 3 : Campagne (GL92 & GL93 côte à côte)
+  const s3Head = document.querySelector("#section3 .sectionhead").cloneNode(true);
+  s3Head.querySelectorAll(".edit-btn").forEach(b => b.remove());
+  units.push(s3Head);
+
+  const camBlocks = Array.from(document.querySelectorAll("#campagne-container .building-block"));
+  const camRowWrap = document.createElement("div");
+  camRowWrap.className = "pdf-two-col-row";
+  camBlocks.forEach(b => camRowWrap.appendChild(b.cloneNode(true)));
+  units.push(camRowWrap);
 
   units.push(document.getElementById("pdfFooter").cloneNode(true));
 
